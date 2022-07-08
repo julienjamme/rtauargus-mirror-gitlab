@@ -56,17 +56,25 @@ write_rda_tab <- function(info_vars) {
 
 #' Crée les fichiers rda à partir de données tabulées
 #'
-#' Crée un fichier tabular (tab) et de métadonnées
+#' Crée un fichier d'apriori pour le secret primaire,
+#' un fichier tabular (tab) et un fichier de métadonnées
 #' (rda) à partir de données tabulées et d'informations additionnelles.
 #'
-#' @param tabular [\strong{obligatoire}] data.frame contenant les
-#'   données tabulées et une variable supplémentaire de type booléen indiquant le secret primaire
+#' @param tabular [\strong{obligatoire}] data.frame contenant
+#' les données tabulées et
+#' une variable supplémentaire indiquant le secret primaire de type booléen
+#'
 #' @param tab_filename nom du fichier tab (avec extension)
 #' @param rda_filename nom du fichier rda (avec extension)
-#' @param tab_filename nom du fichier hst (avec extension)
+#' @param hst_filename nom du fichier hst (avec extension)
 #'
-#' @param explanatory_vars{[\strong{obligatoire}] vecteur contenant les variables de ventilation
-#' @param secret_var nom de la variable de secret
+#' @param explanatory_vars{[\strong{obligatoire}] variables catégorielles, sous
+#' forme de liste de vecteurs
+#' Exemple : \code{list(c("A21", "TREFF", "REG")}
+#' tableau croisant \code{A21} x \code{TREFF} x \code{REG}
+#' @param secret_var variable indiquant le secret primaire de type booléen:
+#' prend la valeur "TRUE" quand les cellules du tableau doivent être masquées
+#' par le secret primaire, "FALSE" sinon.
 #' @param decimals nombre minimal de décimales à afficher (voir section 'Nombre
 #'   de décimales').
 #' @param hrc informations sur les variables hiérarchiques (voir section
@@ -220,17 +228,26 @@ tab_rda <- function(
 
   # valeur par défaut du package si option vide ...........................
 
-  # if (is.null(decimals)) decimals <- op.rtauargus$rtauargus.decimals
-  # if (is.null(hierleadstring)) {
-  #    hierleadstring <- op.rtauargus$rtauargus.hierleadstring
-  #    }
-  # if (is.null(totcode)) totcode <- op.rtauargus$rtauargus.totcode
-  # if (is.null(missing)) missing <- op.rtauargus$rtauargus.missing
+  if (is.null(decimals)) decimals <- op.rtauargus$rtauargus.decimals
+  if (is.null(hierleadstring)) {
+    hierleadstring <- op.rtauargus$rtauargus.hierleadstring
+  }
+  if (is.null(totcode)) totcode <- op.rtauargus$rtauargus.totcode
+  if (is.null(missing)) missing <- op.rtauargus$rtauargus.missing
 
-  # ignore colonnes de longueurs nulles  ..................................
+  # ignore colonnes (differentes de celle du secret) de longueurs nulles  ..................................
+  # ifelse  ((!is.null(secret_var)),
+  #   colvides <- sapply(tabular[,!names(tabular)==secret_var], function(x) all(is.na(x)) | all(x == "")),
+  #   colvides <- sapply(tabular, function(x) all(is.na(x)) | all(x == ""))
+  #   )
 
-  colvides <- sapply(tabular, function(x) all(is.na(x)) | all(x == ""))
-  if (any(colvides)) {
+  if (!is.null(secret_var)){
+    colvides <- sapply(tabular[,!names(tabular)==secret_var], function(x) all(is.na(x)) | all(x == ""))
+  } else {
+    colvides <- sapply(tabular, function(x) all(is.na(x)) | all(x == ""))
+  }
+
+  if (any(colvides) ) {
     name_colvides<-paste(names(tabular)[colvides], collapse = ", ")
     warning(
       "Colonnes vides : ",
@@ -247,9 +264,11 @@ tab_rda <- function(
   ##Controles sur secret_var
   if (is.null(secret_var)) message("secret_var is null : aucun fichier d'apriori ne sera utilisé")
 
-  if((!is.null(secret_var)) && (!is.logical(tabular[[secret_var]]))) {stop("unexpected type : secret_var doit être une va booléenne")}
+  if((!is.null(secret_var)) && (any(!is.na(tabular[[secret_var]]))) && (!is.logical(tabular[[secret_var]])))
+    {stop("unexpected type : secret_var doit être une va booléenne")}
 
-  if((!is.null(secret_var)) && any(is.na(tabular[[secret_var]]))) {stop("NA in secret_var not allow")}
+  if((!is.null(secret_var)) && any(is.na(tabular[[secret_var]])))
+  {stop("NA in secret_var not allow")}
 
 
   #Genere le fichier hst
@@ -260,7 +279,7 @@ tab_rda <- function(
     tabular[secret_var]<-ifelse(tabular[[secret_var]],"u","s")
     hst=tabular[
       tabular[secret_var]=="u",
-      c(explanatory_vars[!(explanatory_vars %in% name_colvides)], secret_var)
+      c(explanatory_vars[(explanatory_vars %in% colnames(tabular))], secret_var)
     ]
 
     write.table(
@@ -277,7 +296,6 @@ tab_rda <- function(
 
   # genere fichier longueur fixe (le fichier .tab) dans le dossier indiqué et infos associees  .....................
 
-  #verifier si pas de pb quand secret n'existe pas
   if (!is.null(secret_var)) tabular<-tabular[,!names(tabular)==secret_var]
 
   fwf_info_tabular <-
