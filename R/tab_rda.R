@@ -60,9 +60,13 @@ write_rda_tab <- function(info_vars) {
 #' (rda) à partir de données tabulées et d'informations additionnelles.
 #'
 #' @param tabular [\strong{obligatoire}] data.frame contenant les
-#'   données tabulées
+#'   données tabulées et une variable supplémentaire de type booléen indiquant le secret primaire
 #' @param tab_filename nom du fichier tab (avec extension)
-#' @param rda_filename nom du fichier rda (avec extension).
+#' @param rda_filename nom du fichier rda (avec extension)
+#' @param tab_filename nom du fichier hst (avec extension)
+#'
+#' @param explanatory_vars{[\strong{obligatoire}] vecteur contenant les variables de ventilation
+#' @param secret_var nom de la variable de secret
 #' @param decimals nombre minimal de décimales à afficher (voir section 'Nombre
 #'   de décimales').
 #' @param hrc informations sur les variables hiérarchiques (voir section
@@ -193,39 +197,44 @@ write_rda_tab <- function(info_vars) {
 #' @export
 
 tab_rda <- function(
-	tabular,
-	tab_filename   = NULL,
-	rda_filename   = NULL,
-	decimals       = getOption("rtauargus.decimals"),
-	hrc            = NULL,
-	hierleadstring = getOption("rtauargus.hierleadstring"),
-	totcode        = getOption("rtauargus.totcode"),
-	missing        = getOption("rtauargus.missing"),
-	codelist       = NULL,
-	value          = NULL,
-	freq           = NULL,
-	maxscore       = NULL,
-	separator      = ","
+  tabular,
+  tab_filename   = NULL,
+  rda_filename   = NULL,
+  hst_filename   = NULL,
+  explanatory_vars=NULL,
+  secret_var=NULL,
+  decimals       = getOption("rtauargus.decimals"),
+  hrc            = NULL,
+  hierleadstring = getOption("rtauargus.hierleadstring"),
+  totcode        = getOption("rtauargus.totcode"),
+  missing        = getOption("rtauargus.missing"),
+  codelist       = NULL,
+  value          = NULL,
+  freq           = NULL,
+  maxscore       = NULL,
+  separator      = ","
 ) {
+
 
   tabular <- as.data.frame(tabular) # (probleme avec tibble notamment)
 
   # valeur par défaut du package si option vide ...........................
 
-  if (is.null(decimals)) decimals <- op.rtauargus$rtauargus.decimals
-  if (is.null(hierleadstring)) {
-    hierleadstring <- op.rtauargus$rtauargus.hierleadstring
-  }
-  if (is.null(totcode)) totcode <- op.rtauargus$rtauargus.totcode
-  if (is.null(missing)) missing <- op.rtauargus$rtauargus.missing
+  # if (is.null(decimals)) decimals <- op.rtauargus$rtauargus.decimals
+  # if (is.null(hierleadstring)) {
+  #    hierleadstring <- op.rtauargus$rtauargus.hierleadstring
+  #    }
+  # if (is.null(totcode)) totcode <- op.rtauargus$rtauargus.totcode
+  # if (is.null(missing)) missing <- op.rtauargus$rtauargus.missing
 
   # ignore colonnes de longueurs nulles  ..................................
 
   colvides <- sapply(tabular, function(x) all(is.na(x)) | all(x == ""))
   if (any(colvides)) {
+    name_colvides<-paste(names(tabular)[colvides], collapse = ", ")
     warning(
       "Colonnes vides : ",
-      paste(names(tabular)[colvides], collapse = ", ")
+      name_colvides
     )
     tabular <- tabular[!colvides]
   }
@@ -234,22 +243,59 @@ tab_rda <- function(
 
   if (is.null(rda_filename)) rda_filename <- tempfile("RTA_", fileext = ".rda")
 
-  # genere fichier longueur fixe et infos associees  .....................
+
+  ##Controles sur secret_var
+  if (is.null(secret_var)) message("secret_var is null : aucun fichier d'apriori ne sera utilisé")
+
+  if((!is.null(secret_var)) && (!is.logical(tabular[[secret_var]]))) {stop("unexpected type : secret_var doit être une va booléenne")}
+
+  if((!is.null(secret_var)) && any(is.na(tabular[[secret_var]]))) {stop("NA in secret_var not allow")}
+
+
+  #Genere le fichier hst
+
+  #voir avec ifelse
+  if((!is.null(secret_var)) && (is.logical(tabular[[secret_var]]))) {
+
+    tabular[secret_var]<-ifelse(tabular[[secret_var]],"u","s")
+    hst=tabular[
+      tabular[secret_var]=="u",
+      c(explanatory_vars[!(explanatory_vars %in% name_colvides)], secret_var)
+    ]
+
+    write.table(
+      hst,
+      hst_filename,
+      row.names=FALSE,
+      col.names = FALSE,
+      sep=",",
+      quote=FALSE
+    )
+  }
+
+
+
+  # genere fichier longueur fixe (le fichier .tab) dans le dossier indiqué et infos associees  .....................
+
+  #verifier si pas de pb quand secret n'existe pas
+  if (!is.null(secret_var)) tabular<-tabular[,!names(tabular)==secret_var]
 
   fwf_info_tabular <-
     gdata::write.fwf(
       tabular,
-	  file = tab_filename,
+      file= tab_filename,
       formatInfo = TRUE,
       colnames = FALSE,
       justify = "right", # pour les variables caractères uniquement
       digits = 15, # max ? voir aide de format
       nsmall = decimals,
       scientific = FALSE,
-	    sep=separator
+      sep=separator
     )
 
   num <- vapply(tabular, is.numeric, logical(1))
+
+
 
   fwf_info_tabular <-
     fwf_info_tabular %>%
@@ -294,6 +340,7 @@ tab_rda <- function(
   hrc_df <- df_param_defaut(var_quanti, "hierarchical", norm_hrc)
   hrc_df$hierleadstring <- NA_character_
   need_leadstring <- grepl("\\.hrc$", hrc_df$hierarchical)
+
   hrc_df$hierleadstring[need_leadstring] <- hierleadstring
 
   fwf_info_tabular <-
@@ -314,7 +361,7 @@ tab_rda <- function(
     )
 
   # reorganise en une liste de variables .............................
-  fwf_info_tabular <-transpose(fwf_info_tabular)
+  fwf_info_tabular <-purrr::transpose(fwf_info_tabular)
 
   # genere vecteur format .rda .......................................
   res <- character(0)
@@ -329,13 +376,15 @@ tab_rda <- function(
   # écrit fichier texte ..............................................
   writeLines(res, rda_filename)
 
-  # renvoie noms des fichiers tab et rda de manière invisible .......
+  # renvoie noms des fichiers hst, tab et rda de manière invisible .......
   invisible(
     list(
-		tab_filename = normPath2(tab_filename),
-		rda_filename = normPath2(rda_filename)
-	)
+      tab_filename = normPath2(tab_filename),
+      rda_filename = normPath2(rda_filename),
+      hst_filename = normPath2(hst_filename)
+    )
   )
+
 
 
 }
