@@ -39,31 +39,71 @@
 #' Hierarchy files read by tau-Argus are expected to follow a strict pattern.
 #' This function mimicks some of its rigidities.
 #' \cr
-#' 1. Columns must be ordered from most aggregated to most detailed.
+#'
+#' 1. \strong{Ideal case}
+#'
+#' Here is how a correspondence table is assumed to look like:
+#' | type   | detailed   |
+#' |--------|------------|
+#'   | planet | telluric   |
+#'   | planet | gasgiant   |
+#'   | star   | bluestar   |
+#'   | star   | whitedwarf |
+#'   | star   | browndwarf |
+#'   | other  | blackhole  |
+#'   | other  | pulsar     |
+#'
+#' Columns must be ordered from most aggregated to most detailed.
 #' If they are in reverse order, you may want to use rev = TRUE. In any other
 #' case, please reorder columns by hand.\cr
 #'
-#' 2. Hierarchy must be well-nested : fine levels must systematically be nested
-#' into unique higher levels.
-#' If this is not compatible with your situation, you will have to treat
-#' separately the different hierarchies, and then merge masks until stable.
+#' Hierarchy must be well-nested : fine levels must systematically be nested
+#' into unique higher levels. If this is not compatible with your situation,
+#' you will have to split it in different hierarchies and insure common cells
+#' are correctly protected (seek further documentation or help if needed).
 #' \cr
 #'
-#' 3. All levels must be filled in for the write_hrc2 function to work properly.
+#' 2. \strong{Dealing with NAs}
+#'
+#' All levels must be filled in for the write_hrc2 function to work properly.
 #' This ensures that the alphabetical sorting purposely regroups equal levels
 #' together. NAs would be sorted together and, thus, be separated from their
 #' expected place in the hierarchy. Other problems may also arise if NAs are
 #' mixed with regular values in the table : comparisons between a line and its
 #' precedessor are made, that may fail if NAs are inputed.\cr
-#'
-#' 4. There are, however, a few cases when NAs can be left relevantly. Please
+#' There are, however, a few cases when NAs can be left relevantly. Please
 #' be careful with the following possibilities and check thoroughly the
-#' resulting .hrc file, or consider filling in NAs beforehand :\cr
-#' - for sparse hierarchies, where all higher levels are indicated only once
-#' and then followed by NAs until jumping to the next category (see sparse
-#' example) ;\cr
-#' - for non-uniform hierarchies, where the lowest levels may not be filled in
-#' for certain categories (but it has to be systematic).\cr
+#' resulting .hrc file, or consider filling in NAs beforehand.
+#'
+#' 2.1 \emph{Sparse hierarchies} \cr
+#' Hierarchy is sparse when NAs are inserted instead of repeating under a given
+#' level.
+#' #' | type   | detailed   |
+#' |--------|------------|
+#' | planet | telluric   |
+#' |        | gasgiant   |
+#' | star   | bluestar   |
+#' |        | whitedwarf |
+#' |        | reddwarf   |
+#' | other  | blackhole  |
+#' |        | pulsar     |
+#' Processing such a file will result in wrongly written .hrc, since NAs will be
+#' sorted together. It is still possible to deactivate sorting ; see sexample
+#' below. This crucially requires that the table has already been sorted by the
+#' user.
+#'
+#' 2.2 \emph{Non-uniform hierarchies}
+#' Hierarchies with non-uniform depth happen when some levels are not detailed
+#' to the  lowest detail, creating NAs.
+#' | type   | detailed   |
+#' |--------|------------|
+#'   | planet | telluric   |
+#'   | planet | gasgiant   |
+#'   | star   |            |
+#'   | other  | blackhole  |
+#'   | other  | pulsar     |
+#' Such cases still issue a warning for the presence of NAs, but do not pose
+#' any problem.
 #'
 #' @return Invisible. Path to the written .hrc file.
 #' \cr
@@ -72,54 +112,50 @@
 #' @export
 #'
 #' @examples
-#' # Standard example. Table is sorted directly by the function.
-#' astral_hrc <- data.frame(
-#' type = c("star", "other", "planet", "star", "star", "other", "planet"),
-#' details = c("browndwarf", "neutronstar", "telluric", "standard",
-#' "whitedwarf", "blackhole", "gasgiant" )
+#' # 1. Standard example. Table is sorted directly by the function.
+#' astral <- data.frame(
+#'   type      = c("planet", "planet", "star", "star", "star", "other", "other"),
+#'   detailed  = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar")
 #' )
-#' path_to_astral <- write_hrc2(astral_hrc)
-#' read.table(path_to_astral) # visualising the output file
-#'
-#' # Wrong order:
-#' reversed_astral <- rev(astral_hrc)
-#' path_to_wrongly_ordered <- write_hrc2(reversed_astral)
-#' read.table(path_to_wrongly_ordered)
-#' # "star" written as a subtype of "browndwarf" (and also of whitedwarf).
-#' # Solution :
-#' path <- write_hrc2(reversed_astral, rev = TRUE)
+#' path <- write_hrc2(astral)
 #' read.table(path)
 #'
-#' # Sparse case: Here, NAs were inserted instead of repeating aggregated
-#' # categories. Direct writing fails : NAs are sorted together before deletion
-#' # and create wrongly isolated branches.
-#' astral_sparse <- data.frame(
-#' type = c("planet", "planet", "star", "star", "star", "other", "other"),
-#' details = c("telluric", "gasgiant" , "standard", "browndwarf",
-#' "whitedwarf", "blackhole","neutronstar")
+#' # Wrong order:
+#' astral_inv <- data.frame(
+#'   detailed  = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar"),
+#'   type      = c("planet", "planet", "star", "star", "star", "other", "other")
 #' )
-#' write_hrc2(astral_sparse, output = "wrongly_written_sparse")
-#' # Such a table can still be treated by switching off sorting.
-#' write_hrc2(astral_sparse, sort_table = FALSE)
+#' path <- write_hrc2(astral_inv)
+#' read.table(path)
+#' # Because of the inverted order, everything is written backwards : planet is a
+#' # subtype of gasgiant, etc.
+#' # Correction :
+#' path <- write_hrc2(astral_inv, rev = TRUE)
+#' read.table(path)
 #'
+#' # 2.1 Sparse case
+#' astral_sparse <- data.frame(
+#'   type      = c("planet", NA, "star", NA, NA, "other", NA),
+#'   detailed  = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar")
+#' )
+#' # NAs in general are risky : as is, the alphabetical sorting scrambles it all.
+#' path <- write_hrc2(astral_sparse)
+#' read.table(path)
+#' # Here, gasgiant and pulsar were misread as sublevels of 'star'.
+#' # In order to correctly ignore NAs, sorting must be disabled.
+#' path2 <- write_hrc2(astral_sparse2, sort_table = FALSE)
+#' read.table(path2)
+#'
+#'
+#' # 2.2 Non-uniform depth
 #' # Non-uniform case still rightfully treated :
 #' astral_nu <- data.frame(
-#' type = c("planet", "planet", "star", "other"),
-#' details = c("telluric", "gasgiant" , NA, NA)
+#'   type      = c("planet", "planet", "star", "other", "other"),
+#'   detailed  = c("telluric", "gasgiant", NA, "blackhole", "pulsar")
 #' )
 #' path <- write_hrc2(astral_nu)
 #' read.table(path)
 #'
-#' # Fatal case with NAs:
-#' astral_na <- data.frame(
-#' type = c("planet", NA, NA, "star", NA, "other", "other"),
-#' details = c("telluric", "gasgiant" , "standard", "browndwarf",
-#' "whitedwarf", "blackhole","neutronstar")
-#' )
-#' path_to_na_hrc <- write_hrc2(astral_na)
-#' read.table(path_to_na_hrc)
-#' # gasgiant, a type of planet, has been implicitly categorized as a star
-#' # because of its missing upper category
 
 
 write_hrc2 <- function(corr_table,
@@ -163,14 +199,15 @@ write_hrc2 <- function(corr_table,
 
   # Warn about presence of NAs
   if (sum(is.na(corr_table))>0){
-    warning("Missing values in correspondence table will be erased If unintended, this can cause errors when using the .hrc file with tau-Argus.")
+    warning("Missing values in correspondence table will be ignored (see documentation).
+            If unintended, this can cause errors when using the .hrc file with tau-Argus.")
   }
   # (Todo : lister cas de NA non gênantes et bloquer les autres)
 
   # Try to detect a problem with detailed column
   if (sum(duplicated(corr_table[,d[2]]))>0) {
-    warning("There are duplicates in the most detailed level (last column).
-          Please check table")
+    warning("There are duplicates in the expectedly most detailed level
+    (last column). Please be sure columns are rightfully ordered.")
   }
 
   # Check if all columns are character
