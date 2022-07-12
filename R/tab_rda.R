@@ -54,50 +54,126 @@ write_rda_tab <- function(info_vars) {
 
 }
 
+#' Create rda files from tabulated data \cr
 #' Crée les fichiers rda à partir de données tabulées
+#'
+#' Create an apriori file for the primary secret,
+#' a tabular file (tab) and a metadata file (rda)
+#' from tabulated data and additional information.\cr
 #'
 #' Crée un fichier d'apriori pour le secret primaire,
 #' un fichier tabular (tab) et un fichier de métadonnées
 #' (rda) à partir de données tabulées et d'informations additionnelles.
 #'
-#' @param tabular [\strong{obligatoire}] data.frame contenant
-#' les données tabulées et
+#' @param tabular [\strong{obligatoire}]
+#' data.frame which contains the tabulated data and
+#' an additional boolean variable that indicates the primary secret of type boolean \cr
+#' data.frame contenant les données tabulées et
 #' une variable supplémentaire indiquant le secret primaire de type booléen
 #'
-#' @param tab_filename nom du fichier tab (avec extension)
-#' @param rda_filename nom du fichier rda (avec extension)
-#' @param hst_filename nom du fichier hst (avec extension)
+#' @param tab_filename tab file name (with .tab extension) \cr
+#' nom du fichier tab (avec extension .tab)
+#' @param rda_filename rda file name (with .rda extension) \cr
+#' nom du fichier rda (avec extension)
+#' @param hst_filename hst file name (with .hst extension) \cr
+#' nom du fichier hst (avec extension)
 #'
-#' @param explanatory_vars{[\strong{obligatoire}] variables catégorielles, sous
-#' forme de liste de vecteurs
-#' Exemple : \code{list(c("A21", "TREFF", "REG")}
-#' tableau croisant \code{A21} x \code{TREFF} x \code{REG}
-#' @param secret_var variable indiquant le secret primaire de type booléen:
+#' @param explanatory_vars{[\strong{obligatoire}] Vector of categorical variables
+#' \cr
+#' Variables catégorielles, sous forme de liste de vecteurs
+#'
+#' Example : \code{list(c("A21", "TREFF", "REG")}
+#' table crossing \code{A21} x \code{TREFF} x \code{REG}
+#'
+#' @param secret_var Boolean variable which give the primary secret : equal to
+#' "TRUE" if a cell is concerned by the primary secret,"FALSE" otherwise.
+#' \cr
+#' variable indiquant le secret primaire de type booléen:
 #' prend la valeur "TRUE" quand les cellules du tableau doivent être masquées
 #' par le secret primaire, "FALSE" sinon.
-#' @param decimals nombre minimal de décimales à afficher (voir section 'Nombre
-#'   de décimales').
-#' @param hrc informations sur les variables hiérarchiques (voir section
-#'   'Variables hiérarchiques').
-#' @param hierleadstring caractère qui, répété n fois, indique que la valeur est
-#'   à n niveaux de profondeur dans la hiérarchie.
-#' @param totcode code(s) pour le total d'une variable catégorielle (voir
-#'   section 'Paramètres spécifiques' pour la syntaxe de ce paramètre). Les
-#'   variables non spécifiées (ni par défaut, ni explicitement) se verront
-#'   attribuer la valeur de \code{rtauargus.totcode}.
-#' @param missing code(s) pour une valeur manquante (voir section
-#'   'Paramètres spécifiques' pour la syntaxe de ce paramètre).
-#' @param codelist fichier(s) contenant les libellés des variables catégorielles
-#'   (voir section 'Paramètres spécifiques' pour la syntaxe de ce paramètre).
-#' @param value nom de la colonne contenant la valeur des cellules
-#' @param freq  nom de la colonne contenant les effectifs pour une cellule
-#' @param maxscore nom de la colonne contenant la valeur du plus gros contributeur
-#' d'une cellule
-#' @param separator charactere utilisé en tant que separateur dans le fichier .tab
-#' @return Renvoie le nom du fichier rda sous forme de liste (de
-#'   manière invisible).
 #'
-#' @section Paramètres spécifiques:
+#' @param decimals Minimum number of decimals to be displayed
+#' (see section 'Number of decimals') \cr
+#' nombre minimal de décimales à afficher (voir section 'Nombre
+#' de décimales').
+#'
+#' @param hrc Informations on hierarchical variables (see section 'hierarchical
+#' variable'). \cr
+#' informations sur les variables hiérarchiques (voir section
+#' 'Variables hiérarchiques').
+#'
+#' @param hierleadstring  Character which, repeated n times,
+#' indicates that the value is at n levels of depth in the hierarchy. \cr
+#' caractère qui, répété n fois, indique que la valeur est
+#' à n niveaux de profondeur dans la hiérarchie.
+#'
+#' @param totcode Code(s) which represent the total of a categorical variable
+#' (see section 'Specific parameters' for the syntax of this parameter).
+#' Variables not specified (neither by default nor explicitly)
+#' will be assigned the value of \code{rtauargus.totcode}.\cr
+#' code(s) pour le total d'une variable catégorielle (voir
+#' section 'Paramètres spécifiques' pour la syntaxe de ce paramètre). Les
+#' variables non spécifiées (ni par défaut, ni explicitement) se verront
+#' attribuer la valeur de \code{rtauargus.totcode}.
+#'
+#' @param missing Code(s) for a missing value (see section 'Specific parameters'
+#' for the syntax of this parameter). \cr
+#' code(s) pour une valeur manquante (voir section
+#' 'Paramètres spécifiques' pour la syntaxe de ce paramètre).
+#'
+#' @param codelist file(s) containing labels of the categorical variables
+#' (see section 'Specific parameters' for the syntax of this parameter).\cr
+#' fichier(s) contenant les libellés des variables catégorielles
+#' (voir section 'Paramètres spécifiques' pour la syntaxe de ce paramètre).
+#'
+#' @param value Name of the column containing the value of the cells. \cr
+#' nom de la colonne contenant la valeur des cellules
+#'
+#' @param freq Name of the column containing the the numbers for a cell. \cr
+#' Nom de la colonne contenant les effectifs pour une cellule
+#'
+#' @param maxscore  Name of the column containing
+#' the value of the largest contributor of a cell. \cr
+#'
+#' Nom de la colonne contenant la valeur du plus gros contributeur
+#' d'une cellule
+#'
+#' @param separator character used as separator in the .tab file. \cr
+#' charactere utilisé en tant que separateur dans le fichier .tab
+#'
+#' @return Return the rda file name as a list (invisible).\cr
+#' Renvoie le nom du fichier rda sous forme de liste (de
+#' manière invisible).
+#'
+#'
+#' @section Apriori file :
+#'
+#' The apriori file (.hst) summarizes for each value of the table
+#' if they are concerned by the primary secret or not.
+#' With this file tauargus will not need to set the primary secret itself.
+#' The parameter \code{secret_var} indicates the name of the primary secret variable.
+#' If there is the additional boolean variable which indicates the primary secret
+#' in the table (of tabulated data), the function tab_rda will create
+#' an apriori file in a format conforming to tauargus.\cr
+#'
+#'
+#' Le fichier d'apriori (.hst) récapitule pour chaque valeurs
+#' du tableau si elles sont concernées par le secret primaire ou non.
+#' Avec ce fichier tauargus n'aura plus besoin de poser le secret primaire lui même,
+#' il se basera sur le fichier d'apriori pour le faire.
+#' Le paramètre \code{secret_var} indique le nom de la variable du secret primaire.
+#' Si l'on rajoute cette variable supplémentaire indiquant
+#' le secret primaire (de type booléen) au tableau de données tabulées, la fonction
+#' tab_rda permet de créer un fichier d'apriori au format conforme pour tauargus.
+#'
+#'
+#' @section Specific parameters:
+#'
+#' The parameters \code{totcode}, \code{missing} and \code{codelist}
+#' must be given in the form of a vector indicating the value to take for each variable.
+#' The names of the elements of the vector give the variable concerned and
+#' the elements of the vector give the value of the parameter for Tau-Argus.
+#' An unnamed element element will be the default value.\cr
 #'
 #' Les paramètres \code{totcode}, \code{missing} et \code{codelist}
 #' sont à renseigner sous la forme d'un vecteur indiquant la valeur à prendre
@@ -108,47 +184,48 @@ write_rda_tab <- function(info_vars) {
 #' nommé constituera la valeur par défaut, qui sera attribuée à toutes les
 #' variables pouvant prendre ce paramètre.
 #'
-#' Par exemple :
+#' For example :
 #' \itemize{
-#'   \item{\code{totcode = "Ensemble"} : écrit \code{<TOTCODE> "Ensemble"} pour
+#'   \item{\code{totcode = "global"} : écrit \code{<TOTCODE> "global"} pour
 #'     toutes les variables catégorielles}
-#'   \item{\code{totcode = c("Ensemble", GEO = "France")} : idem, sauf pour la
-#'     variable \code{GEO}}
+#'   \item{\code{totcode = c("global", size="total", income="total")} :
+#'   idem, sauf pour les variables \code{size}et \code{income}}
 #' }
 #'
-#' @section Variables hiérarchiques:
+#' @section Hierarchical variables:
+#'
+#' Parameter \code{hrc} has the same syntax as \code{totcode},\code{missing} and
+#' \code{codelist} (named vector containing as many elements as variables to describe).
+#' Hierarchy is defined in an separate hrc file (\strong{hiercodelist}).
+#' which can be written with the function \code{link{write_hrc2}}.
+#' The function expects the location of this file (and a possible \code{hierleadstring}
+#' if it differs from the default option of the package).
+#' The path to the existing file is explicitly given.
+#' The elements of the vector in parameter must be named (with the name of the variable),
+#' even if there is only one element
+#' emph{Example :}\code{c(category="category.hrc")}
 #'
 #' Le paramètre \code{hrc} obéit aux mêmes règles de syntaxe que \code{totcode},
 #' \code{missing} et \code{codelist} (vecteur nommé contenant autant d'éléments
-#' que de variables à décrire). Il présente de plus la particularité
-#' d'accepter plusieurs façons de spécifier les valeurs associées aux variables
-#' hiérarchiques.
+#' que de variables à décrire).
 #'
-#' Pour définir une hiérarchie basée sur les positions des caractères
-#' (\strong{hierlevels}), passer une suite de nombre entiers séparés par des
-#' espaces.
+#' La hiérarchie est définie dans un fichier hrc à part (\strong{hiercodelist})
+#' qui peut être écrit à l'aide de la fonction \code{\link{write_hrc2}}.
 #'
-#' \emph{Exemple :} \code{c(CODECOM = "2 3 0 0 0")}
-#'
-#' Si la hiérarchie est définie dans un fichier hrc à part
-#' (\strong{hiercodelist}), la fonction attend l'emplacement de ce fichier (et
-#' un éventuel \code{hierleadstring} s'il diffère de l'option par défaut du
-#' package). Dans ce cas, on peut écrire explicitement le chemin vers un fichier
-#' existant (\code{c(A38 = "a38.hrc")}), mais aussi passer un appel à
-#' \code{\link{write_hrc}} qui génèrera un fichier hrc à partir de données tabulées.
-#'
-#' \emph{Exemple :} \code{c(A38 = write_hrc(tabular, c("A38", "A21", "A10")))}
-#'
-#'
-#' Les deux dernières méthodes passent par la création d'un fichier temporaire.
-#' Pour un fichier hrc réutilisable, il est nécessaire de le créer au préalable
-#' à l'aide de \code{write_hrc}.
-#'
-#' Les trois méthodes nécessitent que les éléments du vecteur en paramètre
-#' soient nommés (avec le nom de la variable), même s'il n'y a qu'un seul
+#' La fonction attend l'emplacement de ce fichier (et un éventuel \code{hierleadstring}
+#' s'il diffère de l'option par défaut du package).
+#' Le chemin vers le fichier existant est explicitement donné.
+#' Les éléments du vecteur en paramètre doivent nommés (avec le nom de la variable),
+#' même s'il n'y a qu'un seul
 #' élément.
+#'\emph{Exemple :}\code{c(category="category.hrc")}
 #'
-#' @section Nombre de décimales:
+#' @section Number of decimals:
+#' Parameter \code{decimals} indicates the minimum number of decimal places to
+#' include in the output file
+#' (whatever the number of decimals actually present in \code{tabular}).
+#' It applies to all real variables (double) but not to integer variables.
+#' To add zeros to an integer variable, convert it with \code{as.double} beforehand.\cr
 #'
 #' Le paramètre \code{decimals} indique le nombre minimal de décimales à faire
 #' figurer dans le fichier en sortie (quel que soit le nombre de décimales
@@ -158,38 +235,43 @@ write_rda_tab <- function(info_vars) {
 #' au préalable.
 #'
 #'
-#' @section Voir aussi: La fonction \code{\link{rtauargus}}, qui utilise cette
+#' @section See also: Fonction \code{\link{tab_rtauargus}}, which uses this function
+#' and its parameters.\cr
+#' Voir aussi: La fonction \code{\link{tab_rtauargus}}, qui utilise cette
 #' fonction et hérite de ses paramètres.
 #'
 #' @examples
 #' \dontrun{
 #' # donnees fictives
-#' tab_df <-
-#'   data.frame(
-#'     GEO      = c("443", "541", "543"),
-#'     A10      = c( "AZ",  "BE",  "BE"),
-#'     A21      = c(  "A",   "B",   "C"),
-#'     DIPL     = c( "01",  "??",  "02"),
-#'     CA       = c(  100,     0,     7),
-#'     effectif = c(    3,     6,     8),
-#'     max_CA   = c(   57,     0,     1),
-#'   )
 #'
-#' # creation rda
-#' res <-
-#'   tab_rda(
-#'     tabular  = tab_df,
-#'     decimals   = 1,
-#'     hrc        = c(A21 = "A21>A10", GEO = "2 1 0", DIPL = "dipl.hrc"),
-#'     totcode    = c(GEO = "France"),
-#'     missing    = c(DIPL = "??"),
-#'     value = "CA",
-#'     freq = "effectif",
-#'     maxscore = "max_CA",
-#'     separator = ","
-#'   )
+#' tab <-data.frame(
+#' category_l     = c( "AZ",  "BD",  "BD",  "BD",  "EH",  "EH"),
+#' category_m     = c( "A" ,   "B",   "C",   "D",   "E",   "F"),
+#' size           = c("tr1", "tr3", "tr2", "tr1", "tr1", "tr2"),
+#' area           = c( "07",  "01",  "04",  "06",  "02",  "06"),
+#' income         = c(  100,     4,     7,    14,    42,    85),
+#' freq           = c(    2,     6,     8,    45,   100,     1),
+#' max            = c(   54,     2,     1,    13,    19,    85),
+#' primary_secret = c( TRUE, FALSE, FALSE,  TRUE, FALSE,  TRUE)
+#' )
 #'
-#' # visualisation des fichiers produits
+#' # rda creation
+#'
+#' files_names <-
+#'  tab_rda(
+#'   tabular          = tab,
+#'   tab_filename     = "Z:/rtaurgus/tauargus_files/file.tab",
+#'   rda_filename     = "Z:/rtaurgus/tauargus_files/file.rda",
+#'   hst_filename     = "Z:/rtaurgus/tauargus_files/file.hst",
+#'   hrc              = c(category="category.hrc"),
+#'   explanatory_vars = c("category" , "size", "area"),
+#'   secret_var       = "primary_secret",
+#'   totcode          = c( category_l= "global",  category_m= "global", size="total", area="global", income="total"),
+#'   value            = "income",
+#'   freq             = "freq"
+#' )
+#'
+#' # Viewing product files
 #' file.show(
 #'  res$rda_filename,
 #'   header = unlist(res),
@@ -226,6 +308,7 @@ tab_rda <- function(
 
   tabular <- as.data.frame(tabular) # (probleme avec tibble notamment)
 
+
   # valeur par défaut du package si option vide ...........................
 
   if (is.null(decimals)) decimals <- op.rtauargus$rtauargus.decimals
@@ -235,11 +318,6 @@ tab_rda <- function(
   if (is.null(totcode)) totcode <- op.rtauargus$rtauargus.totcode
   if (is.null(missing)) missing <- op.rtauargus$rtauargus.missing
 
-  # ignore colonnes (differentes de celle du secret) de longueurs nulles  ..................................
-  # ifelse  ((!is.null(secret_var)),
-  #   colvides <- sapply(tabular[,!names(tabular)==secret_var], function(x) all(is.na(x)) | all(x == "")),
-  #   colvides <- sapply(tabular, function(x) all(is.na(x)) | all(x == ""))
-  #   )
 
   if (!is.null(secret_var)){
     colvides <- sapply(tabular[,!names(tabular)==secret_var], function(x) all(is.na(x)) | all(x == ""))
@@ -250,22 +328,40 @@ tab_rda <- function(
   if (any(colvides) ) {
     name_colvides<-paste(names(tabular)[colvides], collapse = ", ")
     warning(
-      "Colonnes vides : ",
+      "empty columns : ",
       name_colvides
     )
     tabular <- tabular[!colvides]
   }
 
   # parametres non renseignés  ...........................................
-
   if (is.null(rda_filename)) rda_filename <- tempfile("RTA_", fileext = ".rda")
+  if (is.null(tab_filename)) tab_filename <- "tabular.tab"
+  if (is.null(hst_filename)) hst_filename <- "apriori.hst"
+
+  #Gestion du chemin des fichiers
+  name_rda<-basename(rda_filename)
+  directory_rda<-stringr::str_replace(rda_filename, pattern = name_rda, replacement="")
+  if(!(dir.exists(directory_rda)))
+    {dir.create(directory_rda, recursive = TRUE)}
+
+  name_tab<-basename(tab_filename)
+  directory_tab<-stringr::str_replace(tab_filename, pattern = name_tab, replacement="")
+  if(!(dir.exists(directory_tab)))
+    {dir.create(directory_tab, recursive = TRUE)}
+
+  name_hst<-basename(hst_filename)
+  directory_hst<-stringr::str_replace(hst_filename, pattern = name_hst, replacement="")
+  if(!(dir.exists(directory_hst)))
+    {dir.create(directory_hst, recursive = TRUE)}
 
 
-  ##Controles sur secret_var
-  if (is.null(secret_var)) message("secret_var is null : aucun fichier d'apriori ne sera utilisé")
+  #Controles sur secret_var
+
+  if (is.null(secret_var)) message("secret_var is null : no apriori file will be used")
 
   if((!is.null(secret_var)) && (any(!is.na(tabular[[secret_var]]))) && (!is.logical(tabular[[secret_var]])))
-    {stop("unexpected type : secret_var doit être une va booléenne")}
+    {stop("unexpected type : secret_var must be a  boolean variable")}
 
   if((!is.null(secret_var)) && any(is.na(tabular[[secret_var]])))
   {stop("NA in secret_var not allow")}
@@ -273,7 +369,6 @@ tab_rda <- function(
 
   #Genere le fichier hst
 
-  #voir avec ifelse
   if((!is.null(secret_var)) && (is.logical(tabular[[secret_var]]))) {
 
     tabular[secret_var]<-ifelse(tabular[[secret_var]],"u","s")
@@ -281,6 +376,8 @@ tab_rda <- function(
       tabular[secret_var]=="u",
       c(explanatory_vars[(explanatory_vars %in% colnames(tabular))], secret_var)
     ]
+
+  if (nrow(hst)==0) message("no values are concerned by the primary secret : hst file is empty")
 
     write.table(
       hst,
@@ -305,7 +402,7 @@ tab_rda <- function(
       formatInfo = TRUE,
       colnames = FALSE,
       justify = "right", # pour les variables caractères uniquement
-      digits = 15, # max ? voir aide de format
+      digits = 15,
       nsmall = decimals,
       scientific = FALSE,
       sep=separator
@@ -342,10 +439,12 @@ tab_rda <- function(
     df_param_defaut(var_quanti, "totcode", totcode) %>%
     mutate(totcode = dplyr::coalesce(totcode, getOption("rtauargus.totcode")))
 
+
+
   # hierachical  ......................................................
 
   if (!is.null(hrc) & (is.null(names(hrc)) | any(names(hrc) == ""))) {
-    stop("noms manquants pour hrc. Exemple : hrc = c(VAR = \"var.hrc\")")
+    stop("missing name for hrc. Example : hrc = c(VAR = \"var.hrc\")")
   }
 
   norm_hrc <-
