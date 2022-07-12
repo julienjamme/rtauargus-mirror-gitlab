@@ -1,7 +1,7 @@
 #' .hrc writing
 #'
-#' Creates a .hrc hierarchy from a correspondence table \cr
-#' Ecrit une hiérarchie .hrc à partir d'une table de correspondance
+#' Creates a .hrc hierarchy from a correspondence table. \cr
+#' Ecrit une hiérarchie .hrc à partir d'une table de correspondance.
 #'
 #' @param corr_table Data frame. Correspondence table, from most aggregated to most detailed
 #' \cr
@@ -24,26 +24,25 @@
 #' \cr
 #' Caractère unique repérant le niveau de profondeur dans le .hrc
 #'
-#' @details Creates a .hrc hierarchy file adapted to tau-Argus from a correspondence
-#' table. The table must be written :\cr
-#' - from the most aggregated level to the most detailed \cr
-#' - well-nested: any fine level must be nested into a unique higher level
-#' \cr
+#' @details Creates a .hrc hierarchy file adapted to tau-Argus from a
+#' correspondence table fully describing it. By default, lines are sorted
+#' alphabetically so as to regroup identical levels.
+#'
 #' Ecrit un fichier de hiérarchie .hrc lisible par tau-Argus à
-#' partir d'une table de corrrespondance la décrivant complètement.
-#' Il est nécessaire que la table de correspondance soit :\cr
-#' - écrite du niveau le plus agrégé au plus fin\cr
-#' - bien emboîtée : un niveau fin appartient à un unique niveau supérieur
+#' partir d'une table de corrrespondance la décrivant complètement. Par défaut,
+#' les lignes du tableau seront triées afin de regrouper les niveaux de
+#' hiérarchie identiques.
 #'
 #' @section Details about correspondence table & .hrc:
 #' Hierarchy files read by tau-Argus are expected to follow a strict pattern.
 #' This function mimicks some of its rigidities.
 #' \cr
 #'
-#' 1. \strong{Ideal case}
+#' 1 \strong{Ideal case}
 #'
 #' Here is how a correspondence table is assumed to look like:
-#' | type   | detailed   |
+#'
+#' | (**type**)   | (**details**)   |
 #' |--------|------------|
 #'   | planet | telluric   |
 #'   | planet | gasgiant   |
@@ -52,6 +51,7 @@
 #'   | star   | browndwarf |
 #'   | other  | blackhole  |
 #'   | other  | pulsar     |
+#'
 #'
 #' Columns must be ordered from most aggregated to most detailed.
 #' If they are in reverse order, you may want to use rev = TRUE. In any other
@@ -63,7 +63,7 @@
 #' are correctly protected (seek further documentation or help if needed).
 #' \cr
 #'
-#' 2. \strong{Dealing with NAs}
+#' 2 \strong{Dealing with NAs}
 #'
 #' All levels must be filled in for the write_hrc2 function to work properly.
 #' This ensures that the alphabetical sorting purposely regroups equal levels
@@ -78,7 +78,8 @@
 #' 2.1 \emph{Sparse hierarchies} \cr
 #' Hierarchy is sparse when NAs are inserted instead of repeating under a given
 #' level.
-#' #' | type   | detailed   |
+#'
+#' | (**type**)   | (**details**)   |
 #' |--------|------------|
 #' | planet | telluric   |
 #' |        | gasgiant   |
@@ -87,23 +88,110 @@
 #' |        | reddwarf   |
 #' | other  | blackhole  |
 #' |        | pulsar     |
+#'
 #' Processing such a file will result in wrongly written .hrc, since NAs will be
 #' sorted together. It is still possible to deactivate sorting ; see sexample
 #' below. This crucially requires that the table has already been sorted by the
 #' user.
 #'
-#' 2.2 \emph{Non-uniform hierarchies}
+#' 2.2 \emph{Non-uniform hierarchies}\cr
 #' Hierarchies with non-uniform depth happen when some levels are not detailed
 #' to the  lowest detail, creating NAs.
-#' | type   | detailed   |
+#'
+#' | (**type**)   | (**details**)   |
 #' |--------|------------|
 #'   | planet | telluric   |
 #'   | planet | gasgiant   |
 #'   | star   |            |
 #'   | other  | blackhole  |
 #'   | other  | pulsar     |
+#'
 #' Such cases still issue a warning for the presence of NAs, but do not pose
 #' any problem.
+#' @md
+#'
+#'
+#' @section Détails sur les tables de correspondance et le .hrc:
+#' Tau-Argus attend des fichiers écrits avec précision. Certaines de ses
+#' rigidités sont reproduites par cette fonction.
+#' \cr
+#'
+#' 1 \strong{Cas idéal}
+#'
+#' Voici l'aspect général que devrait avoir une table de correspondance :
+#'
+#' | (**type**)   | (**details**)   |
+#' |--------|------------|
+#'   | planet | telluric   |
+#'   | planet | gasgiant   |
+#'   | star   | bluestar   |
+#'   | star   | whitedwarf |
+#'   | star   | browndwarf |
+#'   | other  | blackhole  |
+#'   | other  | pulsar     |
+#'
+#' Les colonnes doivent être ordonnées du niveau le plus agrégé au plus fin.
+#' Si elles sont en sens inverse, l'option rev = TRUE permet de les mettre en
+#' ordre. Dans toute autre situation, vous devrez d'abord les ordonner à la
+#' main.
+#'\cr
+#'
+#' La hiérarchie doit être bien emboîtée : un niveau fin doit systématiquement
+#' correspondre à un unique niveau agrégé. Si cette exigence n'est pas remplie,
+#' il faudra créer plusieurs hiérarchies et faire en sorte que les cellules
+#' communes soient correctement protégées (au besoin, consultez la documentation
+#' ou chercher de l'aide).
+#' \cr
+#'
+#' 2 \strong{Valeurs manquantes}
+#'
+#' Tous les niveaux doivent être remplis pour que write_hrc2 marche correctement.
+#' Cela assure que lors du tri de la table, les niveaux identiques soient
+#' regroupés. Les NAS risquent d'être triés ensemble et donc d'être séparés de
+#' leur position normale. D'autres problèmes peuvent également émerger s'il
+#' reste des valeurs manquantes dans la table : des comparaisons entre une ligne
+#' et sa prédécesseuse peuvent échouer.\cr
+#'
+#' Il y a toutefois quelques cas où les valeurs manquantes peuvent rester
+#' pertinentes. Si c'est ce que vous envisagez, faites bien attention à être
+#' effectivement dans l'un des cas suivants, et prenez le temps de vérifier
+#' prudemment la table .hrc ainsi créée.
+#'
+#' 2.1 \emph{Hiérarchies creuses} \cr
+#' Une hiérarchie est creuse si des NAs sont insérées au lieu de répéter un
+#' niveau donné verticalement.
+#'
+#' | (**type**)   | (**details**)   |
+#' |--------|------------|
+#' | planet | telluric   |
+#' |        | gasgiant   |
+#' | star   | bluestar   |
+#' |        | whitedwarf |
+#' |        | reddwarf   |
+#' | other  | blackhole  |
+#' |        | pulsar     |
+#'
+#' Utiliser un tel fichier va conduire à un mauvais .hrc, car les NAs vont être
+#' regroupées par l'étape de tri des lignes . Il est cependant possible de
+#' désactiver le tri (cf. exemples plus bas). Il est alors absolument nécessaire
+#' que la table ait déjà été bien triée, comme ci-dessus.
+#'
+#' 2.2 \emph{Hiérarchies non-uniformes}\cr
+#' Les hiérarchies à profondeur non-uniforme correspondent aux cas où certains
+#' niveaux ne sont pas détaillés jusqu'au bout, la fin de certaines lignes étant
+#' manquante.
+#'
+#' | (**type**)   | (**details**)   |
+#' |--------|------------|
+#'   | planet | telluric   |
+#'   | planet | gasgiant   |
+#'   | star   |            |
+#'   | other  | blackhole  |
+#'   | other  | pulsar     |
+#'
+#' De tels cas génèrent toujours un warning à cause des NAs, mais ne posent pas
+#' de problème particulier.
+#' @md
 #'
 #' @return Invisible. Path to the written .hrc file.
 #' \cr
@@ -112,50 +200,64 @@
 #' @export
 #'
 #' @examples
-#' # 1. Standard example. Table is sorted directly by the function.
+#' # 1. Standard example. Table will be written on your working directory.
+#' # Exemple standard. La table sera écrite dans votre répertoire de travail.
 #' astral <- data.frame(
 #'   type      = c("planet", "planet", "star", "star", "star", "other", "other"),
-#'   detailed  = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar")
+#'   details   = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar")
 #' )
 #' path <- write_hrc2(astral)
 #' read.table(path)
+#' # Note that line order was changed ('other' comes before 'planet'), to no
+#' # consequence whatsoever for Tau-Argus.
+#' # Remarque : l'ordre des lignes a été modifié ('other' arrive avant 'planet'),
+#' # ce qui n'a aucune conséquence pour Tau-Argus.
 #'
-#' # Wrong order:
+#' # Wrong column order:
+#' # Mauvais ordonnement des colonnes :
 #' astral_inv <- data.frame(
-#'   detailed  = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar"),
+#'   details   = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar"),
 #'   type      = c("planet", "planet", "star", "star", "star", "other", "other")
 #' )
 #' path <- write_hrc2(astral_inv)
 #' read.table(path)
 #' # Because of the inverted order, everything is written backwards : planet is a
 #' # subtype of gasgiant, etc.
+#' # À cause de l'inversion des colonnes, tout est écrit à l'envers : planet est
+#' # devenu une sous-catégorie de gasgiant, par exemple.
+#'
 #' # Correction :
 #' path <- write_hrc2(astral_inv, rev = TRUE)
 #' read.table(path)
 #'
 #' # 2.1 Sparse case
+#' # Cas creux
 #' astral_sparse <- data.frame(
 #'   type      = c("planet", NA, "star", NA, NA, "other", NA),
-#'   detailed  = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar")
+#'   details   = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar")
 #' )
 #' # NAs in general are risky : as is, the alphabetical sorting scrambles it all.
+#' # Les valeurs manquantes causent un risque, de manière générale, à cause du
+#' # tri alphabétique.
 #' path <- write_hrc2(astral_sparse)
 #' read.table(path)
 #' # Here, gasgiant and pulsar were misread as sublevels of 'star'.
 #' # In order to correctly ignore NAs, sorting must be disabled.
+#' # Ici, on voit que gasgiant et pulsar se retrouvent considérés comme des
+#' # sous-types de planètes. Pour corriger, il faut désactiver le tri.
 #' path2 <- write_hrc2(astral_sparse2, sort_table = FALSE)
 #' read.table(path2)
 #'
-#'
 #' # 2.2 Non-uniform depth
-#' # Non-uniform case still rightfully treated :
+#' # Hiérarchie non-uniforme
 #' astral_nu <- data.frame(
 #'   type      = c("planet", "planet", "star", "other", "other"),
-#'   detailed  = c("telluric", "gasgiant", NA, "blackhole", "pulsar")
+#'   details  = c("telluric", "gasgiant", NA, "blackhole", "pulsar")
 #' )
 #' path <- write_hrc2(astral_nu)
 #' read.table(path)
-#'
+#' # In this case, everything is alright.
+#' # Cette fois, tout se passe bien.
 
 
 write_hrc2 <- function(corr_table,
