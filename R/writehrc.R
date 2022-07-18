@@ -1,87 +1,358 @@
-#' Ecrit une hiérarchie .hrc à partir d'une table de correspondance
-#' Creates a .hrc hierarchy from a correspondence table
+#' .hrc writing
 #'
-#' @param corr_table Data frame ; table de correspondance, du plus agrégé au
-#' plus fin
-#' Correspondence table, from most aggregated to most detailed
-#' @param output_name Nom du fichier en sortie (sans extension), ; par défaut,
+#' Creates a .hrc hierarchy from a correspondence table. \cr
+#' Ecrit une hiérarchie .hrc à partir d'une table de correspondance.
+#'
+#' @param corr_table Data frame. Correspondence table, from most aggregated to most detailed
+#' \cr
+#' Table de correspondance, du plus agrégé au plus fin
+#' @param output_name character string. Name for the output file (with no
+#' extension) ; default is set to the same name as the correspondence table
+#' \cr
+#' Nom du fichier en sortie (sans extension) ; par défaut,
 #' identique au nom de la table de correspondance
-#' Name for the output file (with no extension) ; default is set to the same
-#' name as the correspondence table
-#' @param dir_name Nom du répertoire dans lequel écrire le fichier hrc
-#' Directory name for the hrc file
-#' @param hier_lead_string Caractère unique repérant le niveau de profondeur
-#' dans le .hrc
-#' (Single) character indicating the hierarchy depth in the .hrc file
+#' @param dir_name character string. Directory name for the hrc file
+#' \cr
+#' Nom du répertoire dans lequel écrire le fichier hrc
+#' @param sort_table boolean. If TRUE, table will be sorted beforehand.
+#' Recommended.\cr
+#' Si TRUE, la table sera triée avant traitement. Recommandé.
+#' @param rev boolean. If TRUE, column order is reversed.\cr
+#' Si TRUE, inverse l'ordre des colonnes.
+#' @param hier_lead_string character. (Single) character indicating the
+#' hierarchy depth in the .hrc file
+#' \cr
+#' Caractère unique repérant le niveau de profondeur dans le .hrc
 #'
-#' @details Ecrit un fichier de hiérarchie .hrc lisible par $\tau$-Argus à
-#' partir d'une table de corrrespondance la décrivant complètement.
-#' Il est nécessaire que la table de correspondance soit :
-#' - écrite du niveau le plus agrégé au plus fin
-#' - bien emboîtée : un niveau fin appartient à un unique niveau supérieur
-#' Creates a .hrc hierarchy file adapted to $\tau$-Argus from a correspondence
-#' table. The table must be written :
-#' - from the most aggregated level to the most detailed
-#' - well-nested: any fine level must be nested into a unique higher level
+#' @details Creates a .hrc hierarchy file adapted to tau-Argus from a
+#' correspondence table fully describing it. By default, lines are sorted
+#' alphabetically so as to regroup identical levels.
 #'
-#' @return Pas de sortie R.
-#' No R output.
+#' Ecrit un fichier de hiérarchie .hrc lisible par tau-Argus à
+#' partir d'une table de corrrespondance la décrivant complètement. Par défaut,
+#' les lignes du tableau seront triées afin de regrouper les niveaux de
+#' hiérarchie identiques.
+#'
+#' @section Details about correspondence table & .hrc:
+#' Hierarchy files read by tau-Argus are expected to follow a strict pattern.
+#' This function mimicks some of its rigidities.
+#' \cr
+#'
+#' 1 \strong{Ideal case}
+#'
+#' Here is how a correspondence table is assumed to look like:
+#'
+#' | (**type**)   | (**details**)   |
+#' |--------|------------|
+#'   | planet | telluric   |
+#'   | planet | gasgiant   |
+#'   | star   | bluestar   |
+#'   | star   | whitedwarf |
+#'   | star   | browndwarf |
+#'   | other  | blackhole  |
+#'   | other  | pulsar     |
+#'
+#'
+#' Columns must be ordered from most aggregated to most detailed.
+#' If they are in reverse order, you may want to use rev = TRUE. In any other
+#' case, please reorder columns by hand.\cr
+#'
+#' Hierarchy must be well-nested : fine levels must systematically be nested
+#' into unique higher levels. If this is not compatible with your situation,
+#' you will have to split it in different hierarchies and insure common cells
+#' are correctly protected (seek further documentation or help if needed).
+#' \cr
+#'
+#' 2 \strong{Dealing with NAs}
+#'
+#' All levels must be filled in for the write_hrc2 function to work properly.
+#' This ensures that the alphabetical sorting purposely regroups equal levels
+#' together. NAs would be sorted together and, thus, be separated from their
+#' expected place in the hierarchy. Other problems may also arise if NAs are
+#' mixed with regular values in the table : comparisons between a line and its
+#' precedessor are made, that may fail if NAs are inputed.\cr
+#' There are, however, a few cases when NAs can be left relevantly. Please
+#' be careful with the following possibilities and check thoroughly the
+#' resulting .hrc file, or consider filling in NAs beforehand.
+#'
+#' 2.1 \emph{Sparse hierarchies} \cr
+#' Hierarchy is sparse when NAs are inserted instead of repeating under a given
+#' level.
+#'
+#' | (**type**)   | (**details**)   |
+#' |--------|------------|
+#' | planet | telluric   |
+#' |        | gasgiant   |
+#' | star   | bluestar   |
+#' |        | whitedwarf |
+#' |        | reddwarf   |
+#' | other  | blackhole  |
+#' |        | pulsar     |
+#'
+#' Processing such a file will result in wrongly written .hrc, since NAs will be
+#' sorted together. It is still possible to deactivate sorting ; see sexample
+#' below. This crucially requires that the table has already been sorted by the
+#' user.
+#'
+#' 2.2 \emph{Non-uniform hierarchies}\cr
+#' Hierarchies with non-uniform depth happen when some levels are not detailed
+#' to the  lowest detail, creating NAs.
+#'
+#' | (**type**)   | (**details**)   |
+#' |--------|------------|
+#'   | planet | telluric   |
+#'   | planet | gasgiant   |
+#'   | star   |            |
+#'   | other  | blackhole  |
+#'   | other  | pulsar     |
+#'
+#' Such cases still issue a warning for the presence of NAs, but do not pose
+#' any problem.
+#' @md
+#'
+#'
+#' @section Détails sur les tables de correspondance et le .hrc:
+#' Tau-Argus attend des fichiers écrits avec précision. Certaines de ses
+#' rigidités sont reproduites par cette fonction.
+#' \cr
+#'
+#' 1 \strong{Cas idéal}
+#'
+#' Voici l'aspect général que devrait avoir une table de correspondance :
+#'
+#' | (**type**)   | (**details**)   |
+#' |--------|------------|
+#'   | planet | telluric   |
+#'   | planet | gasgiant   |
+#'   | star   | bluestar   |
+#'   | star   | whitedwarf |
+#'   | star   | browndwarf |
+#'   | other  | blackhole  |
+#'   | other  | pulsar     |
+#'
+#' Les colonnes doivent être ordonnées du niveau le plus agrégé au plus fin.
+#' Si elles sont en sens inverse, l'option rev = TRUE permet de les mettre en
+#' ordre. Dans toute autre situation, vous devrez d'abord les ordonner à la
+#' main.
+#'\cr
+#'
+#' La hiérarchie doit être bien emboîtée : un niveau fin doit systématiquement
+#' correspondre à un unique niveau agrégé. Si cette exigence n'est pas remplie,
+#' il faudra créer plusieurs hiérarchies et faire en sorte que les cellules
+#' communes soient correctement protégées (au besoin, consultez la documentation
+#' ou chercher de l'aide).
+#' \cr
+#'
+#' 2 \strong{Valeurs manquantes}
+#'
+#' Tous les niveaux doivent être remplis pour que write_hrc2 marche correctement.
+#' Cela assure que lors du tri de la table, les niveaux identiques soient
+#' regroupés. Les NAS risquent d'être triés ensemble et donc d'être séparés de
+#' leur position normale. D'autres problèmes peuvent également émerger s'il
+#' reste des valeurs manquantes dans la table : des comparaisons entre une ligne
+#' et sa prédécesseuse peuvent échouer.\cr
+#'
+#' Il y a toutefois quelques cas où les valeurs manquantes peuvent rester
+#' pertinentes. Si c'est ce que vous envisagez, faites bien attention à être
+#' effectivement dans l'un des cas suivants, et prenez le temps de vérifier
+#' prudemment la table .hrc ainsi créée.
+#'
+#' 2.1 \emph{Hiérarchies creuses} \cr
+#' Une hiérarchie est creuse si des NAs sont insérées au lieu de répéter un
+#' niveau donné verticalement.
+#'
+#' | (**type**)   | (**details**)   |
+#' |--------|------------|
+#' | planet | telluric   |
+#' |        | gasgiant   |
+#' | star   | bluestar   |
+#' |        | whitedwarf |
+#' |        | reddwarf   |
+#' | other  | blackhole  |
+#' |        | pulsar     |
+#'
+#' Utiliser un tel fichier va conduire à un mauvais .hrc, car les NAs vont être
+#' regroupées par l'étape de tri des lignes . Il est cependant possible de
+#' désactiver le tri (cf. exemples plus bas). Il est alors absolument nécessaire
+#' que la table ait déjà été bien triée, comme ci-dessus.
+#'
+#' 2.2 \emph{Hiérarchies non-uniformes}\cr
+#' Les hiérarchies à profondeur non-uniforme correspondent aux cas où certains
+#' niveaux ne sont pas détaillés jusqu'au bout, la fin de certaines lignes étant
+#' manquante.
+#'
+#' | (**type**)   | (**details**)   |
+#' |--------|------------|
+#'   | planet | telluric   |
+#'   | planet | gasgiant   |
+#'   | star   |            |
+#'   | other  | blackhole  |
+#'   | other  | pulsar     |
+#'
+#' De tels cas génèrent toujours un warning à cause des NAs, mais ne posent pas
+#' de problème particulier.
+#' @md
+#'
+#' @return Invisible. Path to the written .hrc file.
+#' \cr
+#' Chemin vers le fichier .hrc.
 #'
 #' @export
 #'
 #' @examples
-#' corr_a88 = read.csv("data/correspondance_a88.csv",
-#'   quote = "\"",colClasses = c(a88 = "character"))
-#' write.hrc(corr_a88, "example_hrc")
+#' # 1. Standard example. Table will be written on your working directory.
+#' # Exemple standard. La table sera écrite dans votre répertoire de travail.
+#' astral <- data.frame(
+#'   type      = c("planet", "planet", "star", "star", "star", "other", "other"),
+#'   details   = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar")
+#' )
+#' path <- write_hrc2(astral)
+#' read.table(path)
+#' # Note that line order was changed ('other' comes before 'planet'), to no
+#' # consequence whatsoever for Tau-Argus.
+#' # Remarque : l'ordre des lignes a été modifié ('other' arrive avant 'planet'),
+#' # ce qui n'a aucune conséquence pour Tau-Argus.
 #'
+#' # Wrong column order:
+#' # Mauvais ordonnement des colonnes :
+#' astral_inv <- data.frame(
+#'   details   = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar"),
+#'   type      = c("planet", "planet", "star", "star", "star", "other", "other")
+#' )
+#' path <- write_hrc2(astral_inv)
+#' read.table(path)
+#' # Because of the inverted order, everything is written backwards : planet is a
+#' # subtype of gasgiant, etc.
+#' # À cause de l'inversion des colonnes, tout est écrit à l'envers : planet est
+#' # devenu une sous-catégorie de gasgiant, par exemple.
+#'
+#' # Correction :
+#' path <- write_hrc2(astral_inv, rev = TRUE)
+#' read.table(path)
+#'
+#' # 2.1 Sparse case
+#' # Cas creux
+#' astral_sparse <- data.frame(
+#'   type      = c("planet", NA, "star", NA, NA, "other", NA),
+#'   details   = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar")
+#' )
+#' # NAs in general are risky : as is, the alphabetical sorting scrambles it all.
+#' # Les valeurs manquantes causent un risque, de manière générale, à cause du
+#' # tri alphabétique.
+#' path <- write_hrc2(astral_sparse)
+#' read.table(path)
+#' # Here, gasgiant and pulsar were misread as sublevels of 'star'.
+#' # In order to correctly ignore NAs, sorting must be disabled.
+#' # Ici, on voit que gasgiant et pulsar se retrouvent considérés comme des
+#' # sous-types de planètes. Pour corriger, il faut désactiver le tri.
+#' path2 <- write_hrc2(astral_sparse2, sort_table = FALSE)
+#' read.table(path2)
+#'
+#' # 2.2 Non-uniform depth
+#' # Hiérarchie non-uniforme
+#' astral_nu <- data.frame(
+#'   type      = c("planet", "planet", "star", "other", "other"),
+#'   details  = c("telluric", "gasgiant", NA, "blackhole", "pulsar")
+#' )
+#' path <- write_hrc2(astral_nu)
+#' read.table(path)
+#' # In this case, everything is alright.
+#' # Cette fois, tout se passe bien.
 
-write.hrc <- function(corr_table,
-                            output_name = NULL,
-                            dir_name = NULL,
-                            hier_lead_string = "@"){
 
-  #### Basic verifications & formatting
+write_hrc2 <- function(corr_table,
+                       output_name = NULL,
+                       dir_name = NULL,
+                       sort_table = TRUE,
+                       rev = FALSE,
+                       hier_lead_string = getOption("rtauargus.hierleadstring")
+){
 
+  # Set default filename / directory
   if (is.null(output_name)) {
     givenfilename <- deparse(substitute(corr_table))
     output_name <- givenfilename
   }
 
-  if (!is.data.frame(corr_table)) warning("corr_table should be a data frame.")
-
-  if(nchar(hier_lead_string) != 1){
-    message("hier_lead_string has to be a string of only one character.")
-    return(invisible(NULL))
-  }
-
-  corr_table <- as.data.frame(apply(corr_table, 2, FUN = as.character))
-
   dir_name <- if(is.null(dir_name)) getwd() else dir_name
 
+  d = dim.data.frame(corr_table)
 
-  ####
+  #### Basic verifications & formatting
+
+  # Reverse column order if asked
+  if (rev) corr_table <- rev(corr_table)
+
+  # Make corr_table a data frame, or raise error
+  corr_table <- tryCatch(
+    {
+      as.data.frame(corr_table)
+    },
+    error = function(msg){
+      stop("Cannot coerce corr_table to a data frame")
+      print(msg)
+    }
+  )
+
+  # Check hier_lead_string
+  if(nchar(hier_lead_string) != 1){
+    stop("hier_lead_string should be 1 single character")
+  }
+
+  # Warn about presence of NAs
+  if (sum(is.na(corr_table))>0){
+    warning("Missing values in correspondence table will be ignored (see documentation).
+            If unintended, this can cause errors when using the .hrc file with tau-Argus.")
+  }
+  # (Todo : lister cas de NA non gênantes et bloquer les autres)
+
+  # Try to detect a problem with detailed column
+  if (sum(duplicated(corr_table[,d[2]]))>0) {
+    warning("There are duplicates in the expectedly most detailed level
+    (last column). Please be sure columns are rightfully ordered.")
+  }
+
+  # Check if all columns are character
+  suspects <- NULL
+  for (col in 1:d[2]){
+    if (!is.character(corr_table[,col])) {
+      suspects <- c(suspects, col)
+    }
+  }
+  if (!is.null(suspects))  message("Note : the following columns are not of character type : ", colnames(corr_table)[suspects], ". There may be an issue reading the table.")
+
+  #### Creating the hrc file
+
+  # 0. Sort the correspondence table
+  if (sort_table){
+    for (j in 1:d[2]){
+      corr_table <- corr_table[
+        order(corr_table[,d[2]-j+1])
+        ,]
+    }
+  }
 
   # 1. Create a 1-step lagged version of the correspondence table
-  d = dim.data.frame(corr_table)
   corr_table_decale <- rbind(
-    corr_table[d[1]+1,],
+    rep("line1"),
     corr_table[1:(d[1]-1),]
-    )
-
-  # 2. Add a fitting number of hier_lead_string to all
-  # & erase cells identical to the one just before them
+  )
+  # (same dimensions as corr_table ; any line i is equal to line (i-1) of the
+  # original table, except for 1rst line which only purpose is making the
+  # comparison return FALSE)
 
   compare <- corr_table == corr_table_decale #<-- cells identical to their upper
   # neighbour
   missing <- is.na(corr_table)
 
+  # 2. Add a fitting number of hier_lead_string to all
+  # & erase cells identical to the one just before them
+
   for (colonne in 1:d[2]) {
-    corr_table[,colonne] <- apply(
-      as.data.frame(corr_table[,colonne]),
-      1:2,
-      FUN = arobase,
-      num_col = colonne,
-      hier_lead_string = hier_lead_string)
+    corr_table[,colonne] <- paste0(
+      paste0(rep(hier_lead_string,colonne -1), collapse = ""),
+      corr_table[,colonne],
+      "\n")
   }
   corr_table[compare] <- ""
   corr_table[missing] <- ""
@@ -91,23 +362,15 @@ write.hrc <- function(corr_table,
   # not been erased still hold a line break ("\n") so that there will be line
   # breaks only after non-void characters.
 
+  loc_file <- paste0(c(dir_name, "/", output_name, ".hrc"), collapse = "")
+
   write.table(x = corr_table,
-              file = paste(c(dir_name, "/", output_name, ".hrc"), collapse = "", sep = ""),
+              file = loc_file,
               quote = FALSE,
               row.names = FALSE,
               col.names = FALSE,
               sep="",
               eol = "")
-}
 
-
-arobase <- function(case,num_colonne, hier_lead_string) {
-  # Adds to a given cell :
-  # - as many @ as necessary given the hierarchical depth
-  # - a line break for the final writing of the file
-  if (num_colonne == 1) {paste(case,"\n", collapse = "", sep = "")
-    } else {
-  paste(c(rep(hier_lead_string,num_colonne-1),case,"\n"),
-          collapse = "", sep = "")
-    }
+  invisible(loc_file)
 }
