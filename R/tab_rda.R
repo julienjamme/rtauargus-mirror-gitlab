@@ -360,11 +360,14 @@ tab_rda <- function(
 
   if (is.null(secret_var)) message("secret_var is null : no apriori file will be used")
 
+  if ((!is.null(secret_var)) && (!secret_var %in%  colnames(tabular)))
+    {stop("secret_var does not exist in tabular")}
+
   if((!is.null(secret_var)) && (any(!is.na(tabular[[secret_var]]))) && (!is.logical(tabular[[secret_var]])))
     {stop("unexpected type : secret_var must be a  boolean variable")}
 
   if((!is.null(secret_var)) && any(is.na(tabular[[secret_var]])))
-  {stop("NA in secret_var not allow")}
+    {stop("NA in secret_var not allow")}
 
 
   #Genere le fichier hst
