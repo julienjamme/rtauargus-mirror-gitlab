@@ -206,7 +206,7 @@
 #'   type      = c("planet", "planet", "star", "star", "star", "other", "other"),
 #'   details   = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar")
 #' )
-#' path <- write_hrc2(astral)
+#' path <- write_hrc2(astral, hier_lead_string = "@")
 #' read.table(path)
 #' # Note that line order was changed ('other' comes before 'planet'), to no
 #' # consequence whatsoever for Tau-Argus.
@@ -219,7 +219,7 @@
 #'   details   = c("telluric", "gasgiant", "bluestar", "whitedwarf", "reddwarf", "blackhole", "pulsar"),
 #'   type      = c("planet", "planet", "star", "star", "star", "other", "other")
 #' )
-#' path <- write_hrc2(astral_inv)
+#' path <- write_hrc2(astral_inv, hier_lead_string = "@")
 #' read.table(path)
 #' # Because of the inverted order, everything is written backwards : planet is a
 #' # subtype of gasgiant, etc.
@@ -227,7 +227,7 @@
 #' # devenu une sous-catégorie de gasgiant, par exemple.
 #'
 #' # Correction :
-#' path <- write_hrc2(astral_inv, rev = TRUE)
+#' path <- write_hrc2(astral_inv, rev = TRUE, hier_lead_string = "@")
 #' read.table(path)
 #'
 #' # 2.1 Sparse case
@@ -239,13 +239,13 @@
 #' # NAs in general are risky : as is, the alphabetical sorting scrambles it all.
 #' # Les valeurs manquantes causent un risque, de manière générale, à cause du
 #' # tri alphabétique.
-#' path <- write_hrc2(astral_sparse)
+#' path <- write_hrc2(astral_sparse, hier_lead_string = "@")
 #' read.table(path)
 #' # Here, gasgiant and pulsar were misread as sublevels of 'star'.
 #' # In order to correctly ignore NAs, sorting must be disabled.
 #' # Ici, on voit que gasgiant et pulsar se retrouvent considérés comme des
 #' # sous-types de planètes. Pour corriger, il faut désactiver le tri.
-#' path2 <- write_hrc2(astral_sparse2, sort_table = FALSE)
+#' path2 <- write_hrc2(astral_sparse, sort_table = FALSE, hier_lead_string = "@")
 #' read.table(path2)
 #'
 #' # 2.2 Non-uniform depth
@@ -254,10 +254,24 @@
 #'   type      = c("planet", "planet", "star", "other", "other"),
 #'   details  = c("telluric", "gasgiant", NA, "blackhole", "pulsar")
 #' )
-#' path <- write_hrc2(astral_nu)
+#' path <- write_hrc2(astral_nu, hier_lead_string = "@")
 #' read.table(path)
 #' # In this case, everything is alright.
 #' # Cette fois, tout se passe bien.
+#'
+#' # In some cases, non-uniform depth hierarchies are filled in to the last
+#' # level with placeholder repetition. Such repetitions should not be written
+#' # in the .hrc file, and are correctly erased.
+#' # Dans certains cas, des hiérarchies à profondeur non-uniformes sont remplies
+#' # à tous les niveaux en répétant les niveaux les plus hauts. De telles
+#' # répétitions ne doivent pas être transmises dans le .hrc, et sont
+#' # correctement effacées par la fonction.
+#' astral_repeat <- data.frame(
+#'   type      = c("planet", "planet", "star", "other"),
+#'   details  = c("telluric", "gasgiant", "star", "other")
+#' )
+#' path <- write_hrc2(astral_repeat, hier_lead_string = "@")
+#' read.table(path)
 
 
 write_hrc2 <- function(corr_table,
@@ -332,29 +346,59 @@ write_hrc2 <- function(corr_table,
     }
   }
 
-  # 1. Create a 1-step lagged version of the correspondence table
+  # 1. Compare cell values in order to erase duplicates (vertically / horizontally)
+
   corr_table_decale <- rbind(
     rep("line1"),
     corr_table[1:(d[1]-1),]
   )
-  # (same dimensions as corr_table ; any line i is equal to line (i-1) of the
-  # original table, except for 1rst line which only purpose is making the
-  # comparison return FALSE)
+  corr_table_dec_left <- cbind(
+    w = rep("col1"),
+    corr_table[,1:d[2]-1]
+  )
 
   compare <- corr_table == corr_table_decale #<-- cells identical to their upper
   # neighbour
+  compare_left <- corr_table == corr_table_dec_left
   missing <- is.na(corr_table)
 
   # 2. Add a fitting number of hier_lead_string to all
-  # & erase cells identical to the one just before them
 
+  depth_table <- as.data.frame(matrix(
+    nrow = d[1], ncol = d[2]
+  ))
   for (colonne in 1:d[2]) {
-    corr_table[,colonne] <- paste0(
-      paste0(rep(hier_lead_string,colonne -1), collapse = ""),
-      corr_table[,colonne],
-      "\n")
+    depth_table[,colonne] <- colonne-1
   }
+  # the numeric values (from 0 to d2 -1) correspond to the depth in the
+  # hierarchy, which will govern how many hier_lead_string are added when
+  # writing the hrc.
+  # One adjustment has to be done for cases when a same level is repeated
+  # in a line :
+
+  compare_col <- t(apply(
+    compare_left,
+    MARGIN = 1,
+    cumsum
+  ))
+  depth_table <- depth_table - compare_col
+
+  for (col in 1:d[2]){
+    corr_table[,col] <- vect_aro(string = corr_table[,col],
+                                 number = depth_table[,col],
+                                 hier_lead_string)
+  }
+
+
+  # for (colonne in 1:d[2]) {
+  #   corr_table[,colonne] <- paste0(
+  #     paste0(rep(hier_lead_string, colonne-1), collapse = ""),
+  #     corr_table[,colonne],
+  #     "\n")
+  # }
+
   corr_table[compare] <- ""
+  corr_table[compare_left] <- ""
   corr_table[missing] <- ""
 
   # 3. Write corresponding table
@@ -374,3 +418,11 @@ write_hrc2 <- function(corr_table,
 
   invisible(loc_file)
 }
+
+arobase <- function(string, number, hier_lead_string){
+  paste0(paste0(rep(hier_lead_string, number), collapse = "")
+         , string, "\n", collapse = "")
+}
+vect_aro <- Vectorize(arobase, vectorize.args = c("string", "number"))
+
+# vect_aro(string = c("ab", "abb"), number =  1:2, hier_lead_string = "!")
