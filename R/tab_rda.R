@@ -78,7 +78,7 @@ write_rda_tab <- function(info_vars) {
 #' @param hst_filename hst file name (with .hst extension) \cr
 #' nom du fichier hst (avec extension)
 #'
-#' @param explanatory_vars{[\strong{obligatoire}] Vector of categorical variables
+#' @param explanatory_vars [\strong{obligatoire}] Vector of categorical variables
 #' \cr
 #' Variables catégorielles, sous forme de liste de vecteurs
 #'
@@ -139,7 +139,7 @@ write_rda_tab <- function(info_vars) {
 #' d'une cellule
 #'
 #' @param separator character used as separator in the .tab file. \cr
-#' charactere utilisé en tant que separateur dans le fichier .tab
+#' caractère utilisé en tant que separateur dans le fichier .tab
 #'
 #' @return Return the rda file name as a list (invisible).\cr
 #' Renvoie le nom du fichier rda sous forme de liste (de
@@ -173,7 +173,7 @@ write_rda_tab <- function(info_vars) {
 #' must be given in the form of a vector indicating the value to take for each variable.
 #' The names of the elements of the vector give the variable concerned and
 #' the elements of the vector give the value of the parameter for Tau-Argus.
-#' An unnamed element element will be the default value.\cr
+#' An unnamed element will be the default value.\cr
 #'
 #' Les paramètres \code{totcode}, \code{missing} et \code{codelist}
 #' sont à renseigner sous la forme d'un vecteur indiquant la valeur à prendre
@@ -234,19 +234,14 @@ write_rda_tab <- function(info_vars) {
 #' ajouter des zéros à une variable entière, la convertir avec \code{as.double}
 #' au préalable.
 #'
-#'
-#' @section See also: Fonction \code{\link{tab_rtauargus}}, which uses this function
-#' and its parameters.\cr
-#' Voir aussi: La fonction \code{\link{tab_rtauargus}}, qui utilise cette
-#' fonction et hérite de ses paramètres.
+#' @section Voir aussi:
 #'
 #' @examples
 #' \dontrun{
 #' # donnees fictives
 #'
 #' tab <-data.frame(
-#' category_l     = c( "AZ",  "BD",  "BD",  "BD",  "EH",  "EH"),
-#' category_m     = c( "A" ,   "B",   "C",   "D",   "E",   "F"),
+#' category       = c( "A" ,   "B",   "C",   "D",   "E",   "F"),
 #' size           = c("tr1", "tr3", "tr2", "tr1", "tr1", "tr2"),
 #' area           = c( "07",  "01",  "04",  "06",  "02",  "06"),
 #' income         = c(  100,     4,     7,    14,    42,    85),
@@ -260,13 +255,18 @@ write_rda_tab <- function(info_vars) {
 #' files_names <-
 #'  tab_rda(
 #'   tabular          = tab,
-#'   tab_filename     = "Z:/rtaurgus/tauargus_files/file.tab",
-#'   rda_filename     = "Z:/rtaurgus/tauargus_files/file.rda",
-#'   hst_filename     = "Z:/rtaurgus/tauargus_files/file.hst",
-#'   hrc              = c(category="category.hrc"),
+#'   tab_filename     = "tauargus_files/file.tab",
+#'   rda_filename     = "tauargus_files/file.rda",
+#'   hst_filename     = "tauargus_files/file.hst",
+#'   hrc              = c(category = "category.hrc"),
 #'   explanatory_vars = c("category" , "size", "area"),
 #'   secret_var       = "primary_secret",
-#'   totcode          = c( category_l= "global",  category_m= "global", size="total", area="global", income="total"),
+#'   totcode          = c(
+#'     category = "global",
+#'     size     = "total",
+#'     area     = "global",
+#'     income   = "total"
+#'   ),
 #'   value            = "income",
 #'   freq             = "freq"
 #' )
@@ -358,7 +358,7 @@ tab_rda <- function(
 
   #Controles sur secret_var
 
-  if (is.null(secret_var)) message("secret_var is null : no apriori file will be used")
+  if (is.null(secret_var)) message("secret_var is NULL : no apriori file will be used")
 
   if ((!is.null(secret_var)) && (!secret_var %in%  colnames(tabular)))
     {stop("secret_var does not exist in tabular")}
@@ -367,7 +367,7 @@ tab_rda <- function(
     {stop("unexpected type : secret_var must be a  boolean variable")}
 
   if((!is.null(secret_var)) && any(is.na(tabular[[secret_var]])))
-    {stop("NA in secret_var not allow")}
+    {stop("NAs in secret_var are not allowed")}
 
 
   #Genere le fichier hst
@@ -444,7 +444,7 @@ tab_rda <- function(
 
 
 
-  # hierachical  ......................................................
+  # hierarchical  ......................................................
 
   if (!is.null(hrc) & (is.null(names(hrc)) | any(names(hrc) == ""))) {
     stop("missing name for hrc. Example : hrc = c(VAR = \"var.hrc\")")
