@@ -288,7 +288,7 @@ write_hrc2 <- function(corr_table,
     output_name <- givenfilename
   }
 
-  dir_name <- if(is.null(dir_name)) getwd() else dir_name
+  dir_name <- if(is.null(dir_name) | dir_name == "") getwd() else dir_name
 
   d = dim.data.frame(corr_table)
 
